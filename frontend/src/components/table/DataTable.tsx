@@ -1,17 +1,9 @@
 import { useState, useMemo } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import type { TableColumn } from '@/types/common.types';
-import type { SortConfig } from '@/types/common.types';
+import type { TableColumn, TableAction, SortConfig } from '@/types/common.types';
 import { cn } from '@/lib/utils';
 import { TableRow } from './TableRow';
 import { BulkActions } from './BulkActions';
-
-export interface TableAction<T> {
-  icon: React.ComponentType<{ className?: string }>;
-  onClick: (row: T) => void;
-  tooltip?: string;
-  variant?: 'default' | 'danger' | 'success';
-}
 
 interface DataTableProps<T> {
   data: T[];

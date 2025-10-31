@@ -10,6 +10,7 @@ export interface SelectFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   options: SelectOption[];
   error?: string;
   disabled?: boolean;
@@ -22,6 +23,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   label,
   value,
   onChange,
+  onBlur,
   options,
   error,
   disabled = false,
@@ -40,6 +42,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         disabled={disabled || readonly}
         className={`
           px-3 py-2 rounded-md border

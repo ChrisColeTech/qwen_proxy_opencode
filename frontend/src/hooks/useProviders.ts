@@ -112,7 +112,7 @@ export const useDisableProvider = () => {
 
 // Test provider mutation
 export const useTestProvider = () => {
-  return useMutation<{ success: boolean; message: string }, ApiError, string>({
+  return useMutation<{ success: boolean; message: string; latency_ms?: number; error?: string }, ApiError, string>({
     mutationFn: (id) => providerService.test(id),
   });
 };

@@ -1,7 +1,6 @@
-import type { TableColumn } from '@/types/common.types';
+import type { TableColumn, TableAction } from '@/types/common.types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { TableAction } from './DataTable';
 
 interface TableRowProps<T> {
   row: T;

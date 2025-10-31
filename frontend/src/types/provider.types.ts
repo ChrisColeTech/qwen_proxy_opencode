@@ -43,4 +43,5 @@ export interface ProviderTestResult {
   message: string;
   latency_ms?: number;
   error?: string;
+  details?: any;
 }

@@ -12,6 +12,13 @@ export interface TableColumn<T> {
   render?: (value: any, row: T) => React.ReactNode;
 }
 
+export interface TableAction<T> {
+  icon: React.ComponentType<{ className?: string }>;
+  onClick: (row: T) => void;
+  tooltip?: string;
+  variant?: 'default' | 'danger' | 'success';
+}
+
 export interface FilterOption {
   label: string;
   value: string;

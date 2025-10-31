@@ -1,16 +1,16 @@
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 import { TitleBar } from './TitleBar';
 import { StatusBar } from './StatusBar';
 import { Sidebar } from './Sidebar';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 interface AppLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   statusMessage?: string;
-  onNavigate?: (view: string) => void;
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ children, statusMessage = 'Ready', onNavigate }) => {
+export const AppLayout: React.FC<AppLayoutProps> = ({ children, statusMessage = 'Ready' }) => {
   const { sidebarPosition } = useSettingsStore();
   const isLeft = sidebarPosition === 'left';
 
@@ -18,11 +18,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, statusMessage = 
     <div className="h-screen flex flex-col">
       <TitleBar />
       <div className="flex-1 flex overflow-hidden">
-        {isLeft && <Sidebar onNavigate={onNavigate} position={sidebarPosition} />}
+        {isLeft && <Sidebar position={sidebarPosition} />}
         <main className="flex-1 overflow-auto">
-          {children}
+          {children || <Outlet />}
         </main>
-        {!isLeft && <Sidebar onNavigate={onNavigate} position={sidebarPosition} />}
+        {!isLeft && <Sidebar position={sidebarPosition} />}
       </div>
       <StatusBar message={statusMessage} />
     </div>

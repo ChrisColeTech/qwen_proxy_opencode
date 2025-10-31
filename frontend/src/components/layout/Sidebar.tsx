@@ -1,34 +1,40 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, FileText, Activity, Settings } from 'lucide-react';
 
 interface SidebarProps {
-  onNavigate?: (view: string) => void;
   position?: 'left' | 'right';
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, position = 'left' }) => {
-  const [activeView, setActiveView] = useState('home');
+export const Sidebar: React.FC<SidebarProps> = ({ position = 'left' }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleNavigate = (view: string) => {
-    setActiveView(view);
-    onNavigate?.(view);
+  const handleNavigate = (path: string) => {
+    navigate(path);
   };
 
   const topNavItems = [
-    { id: 'home', icon: Home, label: 'Home' },
-    { id: 'activity', icon: Activity, label: 'Activity' },
-    { id: 'logs', icon: FileText, label: 'Logs' },
+    { id: 'home', path: '/', icon: Home, label: 'Home' },
+    { id: 'activity', path: '/activity', icon: Activity, label: 'Activity' },
+    { id: 'logs', path: '/logs', icon: FileText, label: 'Logs' },
   ];
 
-  const isActive = (id: string) => activeView === id;
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
   const isLeft = position === 'left';
 
-  const renderButton = (id: string, Icon: any, label: string) => {
-    const active = isActive(id);
+  const renderButton = (path: string, Icon: any, label: string) => {
+    const active = isActive(path);
     return (
       <button
-        key={id}
-        onClick={() => handleNavigate(id)}
+        key={path}
+        onClick={() => handleNavigate(path)}
         className={`
           h-12 w-12 flex items-center justify-center
           transition-colors relative group
@@ -51,12 +57,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, position = 'left' 
     <div className={`w-12 bg-secondary/30 ${isLeft ? 'border-r' : 'border-l'} border-border flex flex-col`}>
       {/* Top navigation items */}
       <div className="flex-1">
-        {topNavItems.map((item) => renderButton(item.id, item.icon, item.label))}
+        {topNavItems.map((item) => renderButton(item.path, item.icon, item.label))}
       </div>
 
       {/* Settings fixed at bottom */}
       <div className="border-t border-border">
-        {renderButton('settings', Settings, 'Settings')}
+        {renderButton('/settings', Settings, 'Settings')}
       </div>
     </div>
   );

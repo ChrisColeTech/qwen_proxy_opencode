@@ -4,6 +4,7 @@ export interface TextFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   error?: string;
   disabled?: boolean;
   readonly?: boolean;
@@ -18,6 +19,7 @@ export const TextField: React.FC<TextFieldProps> = ({
   label,
   value,
   onChange,
+  onBlur,
   error,
   disabled = false,
   readonly = false,
@@ -39,6 +41,7 @@ export const TextField: React.FC<TextFieldProps> = ({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         disabled={disabled}
         readOnly={readonly}
         placeholder={placeholder}
