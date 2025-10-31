@@ -1,0 +1,58 @@
+{
+  "directories": {
+    "output": "build",
+    "buildResources": "electron/assets"
+  },
+  "files": [
+    "frontend/dist/**/*",
+    "backend/dist/**/*",
+    "electron/dist/**/*",
+    "electron/assets/**/*"
+  ],
+  "extraMetadata": {
+    "main": "electron/dist/main.js"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "electron/assets/icons/win/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "mac": {
+    "target": ["dmg", "zip"],
+    "icon": "electron/assets/icons/mac/icon.icns",
+    "category": "public.app-category.developer-tools"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "icon": "electron/assets/icons/png",
+    "category": "Development"
+  },
+  "dmg": {
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  }
+}
