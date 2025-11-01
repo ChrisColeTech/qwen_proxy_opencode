@@ -9,7 +9,6 @@ import type { QwenCredentials } from '@/types/electron';
 export function QwenLoginCard() {
   const navigate = useNavigate();
 
-  // Mock state - will be replaced with real Electron IPC
   const [credentials, setCredentials] = useState<QwenCredentials>({
     hasToken: false,
   });
@@ -79,20 +78,18 @@ export function QwenLoginCard() {
 
     setIsLoading(true);
     try {
-      // TODO: Wire up real Electron IPC
-      // const newCreds = await window.electronAPI.refreshCredentials();
-      // setCredentials(newCreds);
-
-      // Mock refresh
-      setTimeout(() => {
-        setCredentials({
-          hasToken: true,
-          tokenExpiry: Math.floor(Date.now() / 1000) + 86400 * 30,
-        });
-        setIsLoading(false);
-      }, 500);
+      const electronAPI = window.electronAPI as any;
+      if (electronAPI?.refreshCredentials) {
+        const newCreds = await electronAPI.refreshCredentials();
+        setCredentials(newCreds);
+      } else {
+        console.warn('electronAPI.refreshCredentials not available');
+        alert('Refresh not available. Make sure the Electron app is properly configured.');
+      }
+      setIsLoading(false);
     } catch (error) {
       console.error('Refresh failed:', error);
+      alert(`Refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsLoading(false);
     }
   };

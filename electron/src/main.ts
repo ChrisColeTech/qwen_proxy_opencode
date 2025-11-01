@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain, clipboard, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
+import * as http from 'http';
+import { spawn, ChildProcess } from 'child_process';
 import Store from 'electron-store';
 
 // Initialize electron-store for history persistence
@@ -9,13 +11,14 @@ let mainWindow: BrowserWindow | null = null;
 let loginWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+let backendProcess: ChildProcess | null = null;
 
 // Create the main application window
 function createWindow() {
   // Set window icon based on platform
   const iconPath = process.platform === 'win32'
-    ? path.join(__dirname, '../../assets/icons/win/icon.ico')
-    : path.join(__dirname, '../../assets/icons/png/512x512.png');
+    ? path.join(__dirname, '../assets/icons/win/icon.ico')
+    : path.join(__dirname, '../assets/icons/png/512x512.png');
 
   mainWindow = new BrowserWindow({
  
@@ -75,7 +78,30 @@ function createLoginWindow() {
       partition: 'persist:qwen', // Persistent session for cookies
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
+  });
+
+  // Add debugging for all navigation events
+  loginWindow.webContents.on('will-navigate', (event, url) => {
+    console.log('[Login Window] will-navigate:', url);
+  });
+
+  loginWindow.webContents.on('did-start-loading', () => {
+    console.log('[Login Window] did-start-loading');
+  });
+
+  loginWindow.webContents.on('did-stop-loading', () => {
+    console.log('[Login Window] did-stop-loading');
+  });
+
+  loginWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('[Login Window] did-fail-load:', errorCode, errorDescription, validatedURL);
+  });
+
+  loginWindow.webContents.on('dom-ready', () => {
+    console.log('[Login Window] dom-ready');
   });
 
   // Load Qwen chat page
@@ -83,6 +109,7 @@ function createLoginWindow() {
 
   // Show when ready
   loginWindow.once('ready-to-show', () => {
+    console.log('[Login Window] ready-to-show - showing window');
     loginWindow?.show();
     // Open DevTools in development to debug
     if (process.env.NODE_ENV === 'development') {
@@ -90,28 +117,32 @@ function createLoginWindow() {
     }
   });
 
-  // Monitor navigation to detect login (same as POC)
+  // Monitor navigation to detect login completion
   loginWindow.webContents.on('did-navigate', async (event, url) => {
     console.log('[Login Window] Navigated to:', url);
-
     if (url.includes('chat.qwen.ai')) {
-      // Wait a bit for cookies to be set (same as POC)
+      // Wait a bit for cookies to be set
       setTimeout(async () => {
         const credentials = await extractQwenCookies();
-        console.log('[Login Window] Extracted credentials:', {
+        console.log('Extracted credentials:', {
           hasCookieString: !!credentials.cookieString,
           hasToken: credentials.hasToken,
-          umidToken: credentials.umidToken ? credentials.umidToken.substring(0, 20) + '...' : 'none'
+          umidToken: credentials.umidToken
         });
 
         if (credentials.cookieString && credentials.hasToken) {
           // Credentials extracted successfully
-          console.log('[Login Window] Credentials extracted successfully!');
-          mainWindow?.webContents.send('credentials-updated', credentials);
+          if (mainWindow) {
+            mainWindow.webContents.send('credentials-updated', credentials);
+          }
           store.set('qwen-credentials', credentials);
+          console.log('Credentials saved!');
 
-          // Don't auto-close - let user close manually
-          // loginWindow?.close();
+          // Send credentials to backend API
+          sendCredentialsToBackend(credentials).catch((error) => {
+            // Log error but don't crash the app - credentials are still saved locally
+            console.error('[Login Window] Backend integration error (non-fatal):', error.message);
+          });
         }
       }, 2000);
     }
@@ -165,7 +196,8 @@ async function extractQwenCookies() {
 
     return {
       cookieString,
-      umidToken,
+      tokenValue: tokenCookie?.value || '',  // The actual JWT token
+      umidToken,  // Keep for backward compatibility
       hasToken: !!tokenCookie,
       tokenExpiry
     };
@@ -173,11 +205,72 @@ async function extractQwenCookies() {
     console.error('[Cookie Extract] Error extracting cookies:', error);
     return {
       cookieString: '',
+      tokenValue: '',
       umidToken: '',
       hasToken: false,
       tokenExpiry: undefined
     };
   }
+}
+
+// Send credentials to backend API
+async function sendCredentialsToBackend(credentials: {
+  cookieString: string;
+  tokenValue: string;
+  umidToken: string;
+  hasToken: boolean;
+  tokenExpiry?: number;
+}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('[Backend Integration] Sending credentials to backend...');
+
+    const requestData = JSON.stringify({
+      token: credentials.tokenValue,  // Send the actual JWT token
+      cookies: credentials.cookieString,
+      expiresAt: credentials.tokenExpiry
+    });
+
+    const options = {
+      hostname: 'localhost',
+      port: 8000,
+      path: '/v1/qwen/credentials',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(requestData)
+      }
+    };
+
+    const req = http.request(options, (res) => {
+      let responseData = '';
+
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          console.log('[Backend Integration] Credentials sent to backend successfully');
+          resolve();
+        } else {
+          console.error('[Backend Integration] Failed to send credentials to backend: HTTP', res.statusCode, responseData);
+          reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+        }
+      });
+    });
+
+    req.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'ECONNREFUSED') {
+        console.error('[Backend Integration] Failed to send credentials to backend: Backend server is not running (ECONNREFUSED)');
+      } else {
+        console.error('[Backend Integration] Failed to send credentials to backend:', error.message);
+      }
+      reject(error);
+    });
+
+    req.write(requestData);
+    req.end();
+  });
 }
 
 // Create system tray
@@ -186,7 +279,7 @@ function createTray() {
   let iconPath: string;
 
   // Try to load the icon from assets directory
-  const assetsIconPath = path.join(__dirname, '../../assets/icons/png/16x16.png');
+  const assetsIconPath = path.join(__dirname, '../assets/icons/png/16x16.png');
 
   // For now, use a simple approach - attempt to load from assets, fallback to empty
   try {
@@ -308,7 +401,19 @@ ipcMain.handle('qwen:open-login', () => {
 // Manual cookie extraction (for debugging)
 ipcMain.handle('qwen:extract-cookies', async () => {
   console.log('Manual cookie extraction requested...');
-  await extractQwenCookies();
+  const credentials = await extractQwenCookies();
+
+  if (credentials.cookieString && credentials.hasToken) {
+    // Save credentials locally
+    store.set('qwen-credentials', credentials);
+
+    // Send credentials to backend API
+    sendCredentialsToBackend(credentials).catch((error) => {
+      // Log error but don't crash the app - credentials are still saved locally
+      console.error('[Manual Extract] Backend integration error (non-fatal):', error.message);
+    });
+  }
+
   return Promise.resolve();
 });
 
@@ -339,33 +444,173 @@ ipcMain.handle('qwen:refresh-credentials', async () => {
 // Proxy control - start proxy
 ipcMain.handle('proxy:start', () => {
   console.log('Starting proxy server...');
-  // TODO: Spawn backend process
-  // TODO: Return success status
-  return Promise.resolve({
-    success: true,
-    message: 'Proxy server started',
-    port: 8000
-  });
+
+  try {
+    // Check if already running
+    if (backendProcess && isProcessRunning(backendProcess.pid)) {
+      console.log('Proxy server is already running');
+      return Promise.resolve({
+        success: false,
+        message: 'Proxy server is already running',
+        port: 8000
+      });
+    }
+
+    // Determine the backend directory path (relative to electron directory)
+    const backendDir = path.join(__dirname, '../../backend/provider-router');
+
+    console.log('Backend directory:', backendDir);
+
+    // Spawn the backend process
+    // Use npm run dev command in the backend/provider-router directory
+    const isWindows = process.platform === 'win32';
+    const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+
+    backendProcess = spawn(npmCmd, ['run', 'dev'], {
+      cwd: backendDir,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: isWindows,
+      env: { ...process.env }
+    });
+
+    // Log stdout from backend
+    if (backendProcess.stdout) {
+      backendProcess.stdout.on('data', (data) => {
+        console.log('[Backend]', data.toString().trim());
+      });
+    }
+
+    // Log stderr from backend
+    if (backendProcess.stderr) {
+      backendProcess.stderr.on('data', (data) => {
+        console.error('[Backend Error]', data.toString().trim());
+      });
+    }
+
+    // Handle process exit
+    backendProcess.on('exit', (code, signal) => {
+      console.log(`Backend process exited with code ${code} and signal ${signal}`);
+      backendProcess = null;
+    });
+
+    // Handle process errors
+    backendProcess.on('error', (error) => {
+      console.error('Failed to start backend process:', error);
+      backendProcess = null;
+    });
+
+    console.log('Proxy server started with PID:', backendProcess.pid);
+
+    return Promise.resolve({
+      success: true,
+      message: 'Proxy server started',
+      port: 8000,
+      pid: backendProcess.pid
+    });
+  } catch (error: any) {
+    console.error('Error starting proxy server:', error);
+    backendProcess = null;
+    return Promise.resolve({
+      success: false,
+      message: `Failed to start proxy server: ${error.message}`,
+      port: 8000
+    });
+  }
 });
 
 // Proxy control - stop proxy
 ipcMain.handle('proxy:stop', () => {
   console.log('Stopping proxy server...');
-  // TODO: Stop backend process gracefully
-  return Promise.resolve({
-    success: true,
-    message: 'Proxy server stopped'
-  });
+
+  try {
+    if (!backendProcess) {
+      console.log('No backend process to stop');
+      return Promise.resolve({
+        success: false,
+        message: 'Proxy server is not running'
+      });
+    }
+
+    // Check if process is actually running
+    if (!isProcessRunning(backendProcess.pid)) {
+      console.log('Backend process is not running');
+      backendProcess = null;
+      return Promise.resolve({
+        success: false,
+        message: 'Proxy server is not running'
+      });
+    }
+
+    // Try graceful shutdown first
+    const killed = backendProcess.kill('SIGTERM');
+
+    if (killed) {
+      console.log('Sent SIGTERM to backend process');
+
+      // Set a timeout to force kill if graceful shutdown fails
+      setTimeout(() => {
+        if (backendProcess && isProcessRunning(backendProcess.pid)) {
+          console.log('Graceful shutdown timed out, force killing...');
+          backendProcess.kill('SIGKILL');
+        }
+      }, 5000);
+
+      backendProcess = null;
+
+      return Promise.resolve({
+        success: true,
+        message: 'Proxy server stopped'
+      });
+    } else {
+      console.error('Failed to kill backend process');
+      return Promise.resolve({
+        success: false,
+        message: 'Failed to stop proxy server'
+      });
+    }
+  } catch (error: any) {
+    console.error('Error stopping proxy server:', error);
+    backendProcess = null;
+    return Promise.resolve({
+      success: false,
+      message: `Failed to stop proxy server: ${error.message}`
+    });
+  }
 });
 
 // Get proxy status
 ipcMain.handle('proxy:get-status', () => {
-  // TODO: Check if backend process is running
+  const running = backendProcess !== null && isProcessRunning(backendProcess.pid);
+
+  console.log('Proxy status check:', {
+    hasProcess: backendProcess !== null,
+    pid: backendProcess?.pid,
+    running
+  });
+
   return Promise.resolve({
-    running: false,
-    port: 8000
+    running,
+    port: 8000,
+    pid: backendProcess?.pid
   });
 });
+
+// Helper function to check if a process is running
+function isProcessRunning(pid: number | undefined): boolean {
+  if (!pid) {
+    return false;
+  }
+
+  try {
+    // Sending signal 0 checks if process exists without actually sending a signal
+    process.kill(pid, 0);
+    return true;
+  } catch (error: any) {
+    // ESRCH means no such process
+    // EPERM means process exists but we don't have permission (still running)
+    return error.code === 'EPERM';
+  }
+}
 
 // App lifecycle
 app.whenReady().then(() => {
@@ -390,4 +635,20 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+
+  // Stop backend process if it's running
+  if (backendProcess && isProcessRunning(backendProcess.pid)) {
+    console.log('Stopping backend process before quit...');
+    try {
+      backendProcess.kill('SIGTERM');
+      // Give it a moment for graceful shutdown, then force kill if needed
+      setTimeout(() => {
+        if (backendProcess && isProcessRunning(backendProcess.pid)) {
+          backendProcess.kill('SIGKILL');
+        }
+      }, 2000);
+    } catch (error) {
+      console.error('Error stopping backend process:', error);
+    }
+  }
 });

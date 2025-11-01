@@ -20,6 +20,8 @@ import providerConfigsRouter from './routes/provider-configs.js'
 import modelsRouter from './routes/models.js'
 import providerModelsRouter from './routes/provider-models.js'
 import settingsRouter from './routes/settings.js'
+import qwenCredentialsRoutes from './routes/qwen-credentials.js'
+import activityRouter from './routes/activity.js'
 
 const app = express()
 
@@ -127,6 +129,18 @@ app.use('/v1/providers', providerModelsRouter)
 app.use('/v1/settings', settingsRouter)
 
 /**
+ * Qwen Credentials Routes
+ * REST API for Qwen credentials management
+ */
+app.use('/v1/qwen/credentials', qwenCredentialsRoutes)
+
+/**
+ * Activity Routes
+ * REST API for activity logs and statistics
+ */
+app.use('/api/v1/activity', activityRouter)
+
+/**
  * GET /health
  * Health check endpoint
  */
@@ -190,6 +204,9 @@ app.get('/', (req, res) => {
       '/v1/settings': 'Server settings management (GET, POST)',
       '/v1/settings/:key': 'Single setting management (GET, PUT, DELETE)',
       '/v1/settings/bulk': 'Bulk settings update (POST)',
+      '/v1/qwen/credentials': 'Qwen credentials management (GET, POST, DELETE)',
+      '/api/v1/activity/recent': 'Recent activity logs (GET)',
+      '/api/v1/activity/stats': 'Activity statistics (GET)',
       '/health': 'Health check (GET)',
     },
     registeredProviders: getProviderNames(),

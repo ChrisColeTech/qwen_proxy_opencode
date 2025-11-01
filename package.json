@@ -4,6 +4,7 @@
   "private": true,
   "author": "Your Name",
   "scripts": {
+    "install:all": "npm install && cd backend/provider-router && npm install && cd ../test-client && npm install",
     "dev": "concurrently \"npm:dev:frontend\" \"npm:dev:electron\" \"npm:dev:backend\"",
     "build": "npm run build --workspace=frontend && npm run build --workspace=electron",
     "start": "npm run dev",

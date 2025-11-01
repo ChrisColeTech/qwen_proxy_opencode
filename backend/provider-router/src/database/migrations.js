@@ -112,6 +112,18 @@ const migrations = [
 
       logger.info('Migration 2: Migrating data from request_logs to new tables')
 
+      // Check if request_logs table exists before trying to migrate
+      const tableExists = db.prepare(`
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name='request_logs'
+      `).get()
+
+      if (!tableExists) {
+        logger.info('Migration 2: request_logs table does not exist, skipping data migration')
+        logger.info('Migration 2: New database detected, no data to migrate')
+        return
+      }
+
       // Migrate data from request_logs
       // For each request_log entry, create a session, request, and response
       const oldLogs = db.prepare('SELECT * FROM request_logs').all()

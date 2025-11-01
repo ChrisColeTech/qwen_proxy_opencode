@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen Proxy - Clean V2</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 40px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 40px;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background: #0052a3;
+    }
+    button:active {
+      background: #003d7a;
+    }
+    .status {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+    .status-line {
+      margin: 8px 0;
+    }
+    .status-label {
+      color: #888;
+      display: inline-block;
+      width: 150px;
+    }
+    .status-value {
+      color: #fff;
+    }
+    .status-value.success {
+      color: #4ade80;
+    }
+    .status-value.error {
+      color: #f87171;
+    }
+    .instructions {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+    .instructions h2 {
+      font-size: 18px;
+      margin-top: 0;
+    }
+    .instructions ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Qwen Proxy OpenCode - V2</h1>
+    <p class="subtitle">Clean implementation with manual cookie extraction</p>
+
+    <div>
+      <button id="openLoginBtn">Open Qwen Login</button>
+      <button id="extractCookiesBtn">Extract Cookies</button>
+      <button id="checkStatusBtn">Check Status</button>
+    </div>
+
+    <div class="instructions">
+      <h2>Instructions</h2>
+      <ol>
+        <li>Click "Open Qwen Login" to open the login window</li>
+        <li>Log in to your Qwen account in the new window</li>
+        <li>After successfully logging in, click "Extract Cookies"</li>
+        <li>Check the status to verify credentials were extracted</li>
+      </ol>
+      <p><strong>Note:</strong> The login window will stay open and functional. No automatic navigation interference!</p>
+    </div>
+
+    <div class="status">
+      <h2 style="margin-top: 0;">Status</h2>
+      <div class="status-line">
+        <span class="status-label">Has Token:</span>
+        <span class="status-value" id="hasToken">Unknown</span>
+      </div>
+      <div class="status-line">
+        <span class="status-label">Token Expiry:</span>
+        <span class="status-value" id="tokenExpiry">Unknown</span>
+      </div>
+      <div class="status-line">
+        <span class="status-label">Cookie String:</span>
+        <span class="status-value" id="cookieString">Unknown</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Update status display
+    function updateStatus(credentials) {
+      const hasTokenEl = document.getElementById('hasToken');
+      const tokenExpiryEl = document.getElementById('tokenExpiry');
+      const cookieStringEl = document.getElementById('cookieString');
+
+      if (credentials.hasToken) {
+        hasTokenEl.textContent = 'Yes';
+        hasTokenEl.className = 'status-value success';
+      } else {
+        hasTokenEl.textContent = 'No';
+        hasTokenEl.className = 'status-value error';
+      }
+
+      if (credentials.tokenExpiry) {
+        const expiryDate = new Date(credentials.tokenExpiry * 1000);
+        tokenExpiryEl.textContent = expiryDate.toLocaleString();
+        tokenExpiryEl.className = 'status-value';
+      } else {
+        tokenExpiryEl.textContent = 'N/A';
+        tokenExpiryEl.className = 'status-value';
+      }
+
+      if (credentials.cookieString) {
+        const preview = credentials.cookieString.substring(0, 50) + '...';
+        cookieStringEl.textContent = preview;
+        cookieStringEl.className = 'status-value';
+      } else {
+        cookieStringEl.textContent = 'Not extracted';
+        cookieStringEl.className = 'status-value error';
+      }
+    }
+
+    // Check if electronAPI is available
+    if (!window.electronAPI) {
+      console.error('electronAPI is not available!');
+      alert('Error: electronAPI is not available. Check the console for details.');
+    } else {
+      console.log('electronAPI loaded successfully');
+    }
+
+    // Button handlers
+    document.getElementById('openLoginBtn').addEventListener('click', async () => {
+      console.log('Opening login window...');
+      if (!window.electronAPI) {
+        console.error('electronAPI not available');
+        return;
+      }
+      try {
+        await window.electronAPI.openQwenLogin();
+        console.log('Login window opened');
+      } catch (error) {
+        console.error('Error opening login window:', error);
+      }
+    });
+
+    document.getElementById('extractCookiesBtn').addEventListener('click', async () => {
+      console.log('Extracting cookies...');
+      if (!window.electronAPI) {
+        console.error('electronAPI not available');
+        return;
+      }
+      try {
+        const credentials = await window.electronAPI.extractCookies();
+        console.log('Credentials:', credentials);
+        updateStatus(credentials);
+      } catch (error) {
+        console.error('Error extracting cookies:', error);
+      }
+    });
+
+    document.getElementById('checkStatusBtn').addEventListener('click', async () => {
+      console.log('Checking status...');
+      if (!window.electronAPI) {
+        console.error('electronAPI not available');
+        return;
+      }
+      try {
+        const credentials = await window.electronAPI.getCredentials();
+        console.log('Credentials:', credentials);
+        updateStatus(credentials);
+      } catch (error) {
+        console.error('Error checking status:', error);
+      }
+    });
+
+    // Listen for credential updates
+    if (window.electronAPI) {
+      window.electronAPI.onCredentialsUpdated((credentials) => {
+        console.log('Credentials updated:', credentials);
+        updateStatus(credentials);
+      });
+
+      // Check status on load
+      (async () => {
+        try {
+          const credentials = await window.electronAPI.getCredentials();
+          updateStatus(credentials);
+        } catch (error) {
+          console.error('Error loading initial credentials:', error);
+        }
+      })();
+    }
+  </script>
+</body>
+</html>

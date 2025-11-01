@@ -10,7 +10,6 @@ interface ProxyStatus {
 }
 
 export function ProxyControlCard() {
-  // Mock state - will be replaced with real Electron IPC
   const [proxyStatus, setProxyStatus] = useState<ProxyStatus>({ running: false });
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);

@@ -1,11 +1,12 @@
 {
-  "name": "electron",
+  "name": "qwen-proxy-electron-v2",
   "version": "1.0.0",
-  "description": "Electron main process",
+  "description": "Qwen Proxy OpenCode - Clean Electron Implementation",
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsc && NODE_ENV=development electron .",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "electron ."
   },
   "keywords": [],
   "author": "",
@@ -16,6 +17,6 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
-    "electron-store": "^8.2.0"
+    "electron-store": "^8.1.0"
   }
 }
