@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, FileText, Activity, Settings } from 'lucide-react';
+import { Home, FileText, Activity, Settings, Database, Cpu, MessageSquare, List } from 'lucide-react';
 
 interface SidebarProps {
   position?: 'left' | 'right';
@@ -16,6 +16,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ position = 'left' }) => {
 
   const topNavItems = [
     { id: 'home', path: '/', icon: Home, label: 'Home' },
+    { id: 'providers', path: '/providers', icon: Database, label: 'Providers' },
+    { id: 'models', path: '/models', icon: Cpu, label: 'Models' },
+    { id: 'sessions', path: '/sessions', icon: MessageSquare, label: 'Sessions' },
+    { id: 'requests', path: '/requests', icon: List, label: 'Requests' },
     { id: 'activity', path: '/activity', icon: Activity, label: 'Activity' },
     { id: 'logs', path: '/logs', icon: FileText, label: 'Logs' },
   ];

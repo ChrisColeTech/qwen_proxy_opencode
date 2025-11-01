@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogIn, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-
-interface QwenCredentials {
-  hasToken: boolean;
-  tokenExpiry?: number;
-}
+import { LogIn, RefreshCw, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import type { QwenCredentials } from '@/types/electron';
 
 export function QwenLoginCard() {
+  const navigate = useNavigate();
+
   // Mock state - will be replaced with real Electron IPC
   const [credentials, setCredentials] = useState<QwenCredentials>({
     hasToken: false,
@@ -22,41 +21,55 @@ export function QwenLoginCard() {
   useEffect(() => {
     if (!isElectron) return;
 
-    // TODO: Wire up real Electron IPC
-    // window.electronAPI.getCredentials().then(setCredentials);
+    // Wire up real Electron IPC
+    const electronAPI = window.electronAPI as any;
 
-    // TODO: Listen for credential updates
-    // const unsubscribe = window.electronAPI.onCredentialsUpdated(setCredentials);
-    // return () => unsubscribe();
+    if (electronAPI?.getCredentials) {
+      electronAPI.getCredentials().then((creds: QwenCredentials) => {
+        setCredentials(creds);
+      }).catch((error: Error) => {
+        console.error('Failed to get credentials:', error);
+      });
+    }
 
-    // Mock data for now
-    setCredentials({
-      hasToken: true,
-      tokenExpiry: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days from now
-    });
+    // Listen for credential updates
+    if (electronAPI?.onCredentialsUpdated) {
+      const unsubscribe = electronAPI.onCredentialsUpdated((creds: QwenCredentials) => {
+        setCredentials(creds);
+      });
+      return () => unsubscribe();
+    }
   }, [isElectron]);
 
   const handleLogin = async () => {
     if (!isElectron) {
-      alert('Login is only available in the Electron desktop app');
+      // Show helpful message for browser mode
+      alert(
+        'Qwen Login via Embedded Browser\n\n' +
+        'This feature is only available in the Electron desktop app.\n\n' +
+        'In browser mode, you can:\n' +
+        '• Create a Qwen provider manually\n' +
+        '• Add your API key or credentials in the provider config\n' +
+        '• Navigate to Providers → Create Provider'
+      );
       return;
     }
 
     setIsLoading(true);
     try {
-      // TODO: Wire up real Electron IPC
-      // await window.electronAPI.openLogin();
-
-      // Mock success
-      setTimeout(() => {
-        setCredentials({
-          hasToken: true,
-          tokenExpiry: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days
-        });
-        setIsLoading(false);
-      }, 1000);
+      // Wire up real Electron IPC
+      const electronAPI = window.electronAPI as any;
+      if (electronAPI?.openLogin) {
+        await electronAPI.openLogin();
+        // Credentials will be updated via event listener
+      } else {
+        console.warn('electronAPI.openLogin not available');
+        alert('Electron login not available. Make sure the Electron app is properly configured.');
+      }
+      setIsLoading(false);
     } catch (error) {
       console.error('Login failed:', error);
+      alert(`Login failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsLoading(false);
     }
   };
@@ -113,14 +126,27 @@ export function QwenLoginCard() {
       <Card>
         <CardHeader>
           <h2 className="text-lg font-semibold">Qwen Authentication</h2>
+          <Badge variant="secondary">Browser Mode</Badge>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Qwen login is only available in the Electron desktop app.
-            <br />
-            <br />
-            In browser mode, you can configure Qwen providers manually with API keys.
+            Automatic Qwen login with embedded browser is only available in the Electron desktop app.
           </p>
+          <div className="bg-muted/50 p-3 rounded-md space-y-2">
+            <p className="text-sm font-medium">In browser mode, you can:</p>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+              <li>Create a Qwen provider manually</li>
+              <li>Add your API key or credentials</li>
+              <li>Configure provider settings</li>
+            </ul>
+          </div>
+          <Button
+            onClick={() => navigate('/providers/create')}
+            className="w-full"
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Create Qwen Provider
+          </Button>
         </CardContent>
       </Card>
     );

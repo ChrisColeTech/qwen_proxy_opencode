@@ -6,8 +6,12 @@ class ApiService {
   private client: AxiosInstance;
 
   constructor() {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+    console.log('[API Service] Base URL:', baseURL);
+    console.log('[API Service] Environment:', import.meta.env);
+
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
+      baseURL,
       headers: {
         'Content-Type': 'application/json',
       },

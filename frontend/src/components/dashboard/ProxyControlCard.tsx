@@ -22,15 +22,24 @@ export function ProxyControlCard() {
   useEffect(() => {
     if (!isElectron) return;
 
-    // TODO: Wire up real Electron IPC
-    // window.electronAPI.getProxyStatus().then(setProxyStatus);
+    // Wire up real Electron IPC
+    const electronAPI = window.electronAPI as any;
 
-    // TODO: Listen for status updates
-    // const unsubscribe = window.electronAPI.onProxyStatusChanged(setProxyStatus);
-    // return () => unsubscribe();
+    if (electronAPI?.getProxyStatus) {
+      electronAPI.getProxyStatus().then((status: ProxyStatus) => {
+        setProxyStatus(status);
+      }).catch((error: Error) => {
+        console.error('Failed to get proxy status:', error);
+      });
+    }
 
-    // Mock data for now
-    setProxyStatus({ running: false, port: 8000 });
+    // Listen for status updates
+    if (electronAPI?.onProxyStatusChanged) {
+      const unsubscribe = electronAPI.onProxyStatusChanged((status: ProxyStatus) => {
+        setProxyStatus(status);
+      });
+      return () => unsubscribe();
+    }
   }, [isElectron]);
 
   const handleStart = async () => {
@@ -41,19 +50,15 @@ export function ProxyControlCard() {
 
     setIsStarting(true);
     try {
-      // TODO: Wire up real Electron IPC
-      // const result = await window.electronAPI.startProxy();
-      // if (result.success) {
-      //   // Status will be updated via event listener
-      // } else {
-      //   alert(`Failed to start: ${result.message}`);
-      // }
-
-      // Mock start
-      setTimeout(() => {
-        setProxyStatus({ running: true, port: 8000 });
-        setIsStarting(false);
-      }, 2000);
+      const electronAPI = window.electronAPI as any;
+      const result = await electronAPI.startProxy();
+      if (result.success) {
+        // Status will be updated via event listener or we can update it directly
+        setProxyStatus({ running: true, port: result.port || 8000 });
+      } else {
+        alert(`Failed to start: ${result.message}`);
+      }
+      setIsStarting(false);
     } catch (error) {
       console.error('Failed to start proxy:', error);
       alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -66,19 +71,15 @@ export function ProxyControlCard() {
 
     setIsStopping(true);
     try {
-      // TODO: Wire up real Electron IPC
-      // const result = await window.electronAPI.stopProxy();
-      // if (result.success) {
-      //   // Status will be updated via event listener
-      // } else {
-      //   alert(`Failed to stop: ${result.message}`);
-      // }
-
-      // Mock stop
-      setTimeout(() => {
+      const electronAPI = window.electronAPI as any;
+      const result = await electronAPI.stopProxy();
+      if (result.success) {
+        // Status will be updated via event listener or we can update it directly
         setProxyStatus({ running: false, port: 8000 });
-        setIsStopping(false);
-      }, 1000);
+      } else {
+        alert(`Failed to stop: ${result.message}`);
+      }
+      setIsStopping(false);
     } catch (error) {
       console.error('Failed to stop proxy:', error);
       alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

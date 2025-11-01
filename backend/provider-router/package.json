@@ -8,8 +8,8 @@
     "provider-cli": "./bin/provider-cli.js"
   },
   "scripts": {
-    "start": "npx kill-port 3001 && node src/index.js",
-    "dev": "npx kill-port 3001 && node --watch src/index.js",
+    "start": "npx kill-port 8000 && node src/index.js",
+    "dev": "npx kill-port 8000 && node --watch src/index.js",
     "test": "node --test tests/**/*.test.js"
   },
   "keywords": [
